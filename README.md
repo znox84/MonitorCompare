@@ -7,42 +7,6 @@
 - 데스크톱(마우스) / 모바일(터치·핀치 줌) 모두 지원
 - **PWA**: 아이폰/안드로이드 홈 화면에 설치, 오프라인 실행
 
-## GitHub Pages 배포
-
-이 폴더(`MonitorCompare`) 자체를 저장소 루트로 올리는 방식이 가장 깔끔합니다.
-
-```bash
-# 1) 이 폴더에서 git 초기화
-cd MonitorCompare
-git init
-git add .
-git commit -m "MonitorCompare PWA"
-git branch -M main
-
-# 2) GitHub에 빈 저장소를 먼저 만든 뒤 (예: monitor-compare) 연결
-git remote add origin https://github.com/<사용자명>/<저장소명>.git
-git push -u origin main
-```
-
-GitHub CLI(`gh`)가 있다면 2단계를 한 줄로:
-
-```bash
-gh repo create <저장소명> --public --source=. --remote=origin --push
-```
-
-### Pages 활성화
-저장소 → **Settings → Pages → Build and deployment**
-- **Source**: `Deploy from a branch`
-- **Branch**: `main` / `/(root)` → **Save**
-
-1~2분 뒤 아래 주소로 공개됩니다 (HTTPS 자동):
-
-```
-https://<사용자명>.github.io/<저장소명>/
-```
-
-루트에 접속하면 `index.html`이 `MonitorCompare.html`로 자동 이동합니다.
-
 ## 아이폰에 설치
 
 1. **사파리**로 위 주소 접속
