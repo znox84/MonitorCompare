@@ -192,6 +192,23 @@
   }
   .btn-add:hover { background: var(--accent-2); }
   .btn-add:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  .footer-actions { display: flex; gap: 8px; }
+  .footer-actions .btn-add { flex: 1; }
+  .btn-done {
+    display: none;                 /* 데스크톱에서는 숨김 (모바일 시트에서만 표시) */
+    align-items: center;
+    justify-content: center;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 11px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-done:hover { background: var(--border); }
   .hint { font-size: 11px; color: var(--muted); text-align: center; margin-top: 8px; }
 
   /* ---------- Stage ---------- */
@@ -345,6 +362,7 @@
       background: var(--border); border-radius: 2px; margin: 2px auto 12px;
     }
     .drawer-close { display: flex; }
+    .btn-done { display: inline-flex; }
     #btnSettings { display: inline-flex; align-items: center; gap: 6px; }
     #backdrop.show { display: block; }
     #toolbar { top: calc(10px + env(safe-area-inset-top)); gap: 3px; padding: 5px; max-width: calc(100% - 20px); }
@@ -367,7 +385,10 @@
     </div>
     <div class="side-scroll" id="cards"></div>
     <div class="side-footer">
-      <button class="btn-add" id="btnAdd">+ 모니터 추가</button>
+      <div class="footer-actions">
+        <button class="btn-add" id="btnAdd">+ 모니터 추가</button>
+        <button class="btn-done" id="btnDone">확인</button>
+      </div>
       <div class="hint" id="addHint">최대 4개까지 비교할 수 있습니다</div>
     </div>
   </aside>
@@ -895,6 +916,7 @@ function openSettings() { sidebar.classList.add("open"); backdrop.classList.add(
 function closeSettings() { sidebar.classList.remove("open"); backdrop.classList.remove("show"); }
 document.getElementById("btnSettings").onclick = openSettings;
 document.getElementById("btnCloseSettings").onclick = closeSettings;
+document.getElementById("btnDone").onclick = closeSettings;
 backdrop.onclick = closeSettings;
 
 // 마우스 휠 줌 (Ctrl 또는 그냥 휠)
