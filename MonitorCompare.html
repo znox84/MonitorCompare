@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>MonitorCompare — 모니터 크기 비교</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f1115">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+
+<!-- iOS 홈 화면 앱 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MonitorCompare">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --border: #2a2f3a;
+    --text: #e6e9ef;
+    --muted: #8b94a7;
+    --accent: #4f8cff;
+    --accent-2: #2d6cff;
+    --danger: #ff5c6c;
+    --guide: #ffcf4d;
+    --grid: rgba(255,255,255,0.04);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ---------- Sidebar ---------- */
+  #sidebar {
+    width: 320px;
+    min-width: 320px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .side-header {
+    padding: 18px 18px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .side-header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .side-header p {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .side-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+  }
+  .side-scroll::-webkit-scrollbar { width: 8px; }
+  .side-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .monitor-card {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .mc-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .swatch {
+    width: 14px; height: 14px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .mc-title {
+    font-size: 13px;
+    font-weight: 600;
+    flex: 1;
+  }
+  .mc-dims {
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .btn-remove {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+  .btn-remove:hover { color: var(--danger); background: rgba(255,92,108,0.1); }
+
+  .field { margin-bottom: 10px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 5px;
+    font-weight: 500;
+  }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  input[type="number"], select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
+  input:focus, select:focus { border-color: var(--accent); }
+
+  .ar-inputs { display: flex; align-items: center; gap: 6px; }
+  .ar-inputs span { color: var(--muted); font-size: 13px; }
+  .ar-inputs input { text-align: center; }
+
+  .pivot-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .pivot-toggle span { font-size: 13px; }
+  .switch {
+    width: 38px; height: 22px;
+    background: var(--border);
+    border-radius: 11px;
+    position: relative;
+    transition: background .15s;
+    flex-shrink: 0;
+  }
+  .switch::after {
+    content: "";
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 18px; height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform .15s;
+  }
+  .pivot-toggle.on .switch { background: var(--accent); }
+  .pivot-toggle.on .switch::after { transform: translateX(16px); }
+
+  .side-footer {
+    padding: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .btn-add {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 11px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .btn-add:hover { background: var(--accent-2); }
+  .btn-add:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  .hint { font-size: 11px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+  /* ---------- Stage ---------- */
+  #stage-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    cursor: grab;
+    touch-action: none;              /* 브라우저 기본 제스처 차단 (터치 드래그/핀치 직접 처리) */
+  }
+  #stage-wrap.panning { cursor: grabbing; }
+  #stage {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+  .monitor {
+    position: absolute;
+    border: 2px solid rgba(255,255,255,0.85);
+    border-radius: 6px;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+    transition: box-shadow .15s;
+  }
+  .monitor.dragging { cursor: grabbing; z-index: 100 !important; box-shadow: 0 14px 44px rgba(0,0,0,0.55); }
+  .monitor .label {
+    text-align: center;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    pointer-events: none;
+    padding: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .monitor .label .lbl-name { font-weight: 700; font-size: 15px; }
+  .monitor .label .lbl-sub { font-size: 12px; opacity: 0.9; margin-top: 2px; }
+
+  /* guide lines */
+  .guide {
+    position: absolute;
+    background: var(--guide);
+    z-index: 200;
+    pointer-events: none;
+  }
+  .guide.v { width: 1px; top: 0; bottom: 0; }
+  .guide.h { height: 1px; left: 0; right: 0; }
+
+  /* ---------- Toolbar ---------- */
+  #toolbar {
+    position: absolute;
+    top: 16px; left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(23,26,33,0.92);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 6px;
+    z-index: 300;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+  }
+  .tool-btn {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .12s;
+  }
+  .tool-btn:hover { background: var(--panel-2); }
+  .tool-btn.wide { width: auto; padding: 0 12px; font-size: 13px; gap: 6px; font-weight: 600; }
+  .tool-sep { width: 1px; height: 22px; background: var(--border); margin: 0 2px; }
+  #zoom-level {
+    font-size: 12px;
+    color: var(--muted);
+    min-width: 44px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+  #zoom-level:hover { color: var(--text); }
+
+  .scale-note {
+    position: absolute;
+    bottom: 16px; left: 16px;
+    font-size: 11px;
+    color: var(--muted);
+    background: rgba(23,26,33,0.8);
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    z-index: 300;
+    max-width: calc(100% - 32px);
+  }
+
+  /* ---------- 모바일용 공통 요소 (기본: 숨김) ---------- */
+  .drawer-handle { display: none; }
+  .drawer-close {
+    display: none;
+    position: absolute; top: 12px; right: 12px;
+    width: 30px; height: 30px;
+    align-items: center; justify-content: center;
+    background: var(--panel-2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; font-size: 18px; cursor: pointer;
+    z-index: 2;
+  }
+  #btnSettings {
+    display: none;
+    position: fixed; right: 16px; bottom: 16px; z-index: 550;
+    background: var(--accent); color: #fff; border: none; border-radius: 999px;
+    padding: 12px 18px; font-size: 15px; font-weight: 700;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45); cursor: pointer;
+  }
+  #backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 540; }
+
+  /* ---------- 좁은 화면 (태블릿 세로 / 스마트폰) ---------- */
+  @media (max-width: 820px) {
+    body { flex-direction: column; }
+    #sidebar {
+      position: fixed; left: 0; right: 0; bottom: 0; top: auto;
+      width: 100%; min-width: 0;
+      height: 74vh; max-height: 82vh;
+      transform: translateY(105%);
+      transition: transform .28s ease;
+      z-index: 600;
+      border-right: none; border-top: 1px solid var(--border);
+      border-radius: 18px 18px 0 0;
+      box-shadow: 0 -12px 40px rgba(0,0,0,0.5);
+    }
+    #sidebar.open { transform: translateY(0); }
+    #stage-wrap { width: 100%; height: 100%; }
+    /* iOS: 입력창 포커스 시 자동 확대 방지 (16px 이상) */
+    input[type="number"], select { font-size: 16px; }
+    .drawer-handle {
+      display: block; width: 40px; height: 4px;
+      background: var(--border); border-radius: 2px; margin: 2px auto 12px;
+    }
+    .drawer-close { display: flex; }
+    #btnSettings { display: inline-flex; align-items: center; gap: 6px; }
+    #backdrop.show { display: block; }
+    #toolbar { top: calc(10px + env(safe-area-inset-top)); gap: 3px; padding: 5px; max-width: calc(100% - 20px); }
+    .tool-btn { width: 34px; height: 34px; }
+    .tool-btn.wide { padding: 0 10px; font-size: 12px; }
+    .scale-note { display: none; }
+    #btnSettings { bottom: calc(16px + env(safe-area-inset-bottom)); }
+    .side-footer { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+  }
+</style>
+</head>
+<body>
+
+  <aside id="sidebar">
+    <div class="side-header">
+      <div class="drawer-handle"></div>
+      <button class="drawer-close" id="btnCloseSettings" aria-label="설정 닫기">×</button>
+      <h1>MonitorCompare</h1>
+      <p>모니터 크기를 실제 비율로 비교하세요</p>
+    </div>
+    <div class="side-scroll" id="cards"></div>
+    <div class="side-footer">
+      <button class="btn-add" id="btnAdd">+ 모니터 추가</button>
+      <div class="hint" id="addHint">최대 4개까지 비교할 수 있습니다</div>
+    </div>
+  </aside>
+
+  <main id="stage-wrap">
+    <div id="toolbar">
+      <button class="tool-btn wide" id="btnAlign" title="모든 모니터를 같은 바닥 높이로 정렬">⎯ 높이 정렬</button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" id="btnZoomOut" title="축소">−</button>
+      <span id="zoom-level" title="클릭하면 100%로 초기화">100%</span>
+      <button class="tool-btn" id="btnZoomIn" title="확대">＋</button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" id="btnFit" title="화면에 맞추기">⤢</button>
+      <button class="tool-btn" id="btnReset" title="초기 위치로 이동 (위치·확대 초기화)">⟲</button>
+    </div>
+    <div id="stage"></div>
+    <div class="scale-note" id="scaleNote"></div>
+  </main>
+
+  <div id="backdrop"></div>
+  <button id="btnSettings" aria-label="설정 열기">⚙︎ 설정</button>
+
+<script>
+"use strict";
+
+/* ============ 상태 ============ */
+const PALETTE = ["#4f8cff", "#ff7a59", "#3ecf8e", "#c471ff"];
+const PRESETS = [
+  { label: "16:9 (와이드)", w: 16, h: 9 },
+  { label: "16:10", w: 16, h: 10 },
+  { label: "21:9 (울트라와이드)", w: 21, h: 9 },
+  { label: "32:9 (슈퍼울트라와이드)", w: 32, h: 9 },
+  { label: "4:3", w: 4, h: 3 },
+  { label: "3:2", w: 3, h: 2 },
+  { label: "직접 입력", w: 0, h: 0 },
+];
+const MAX_MONITORS = 4;
+const MIN_MONITORS = 1;
+const BASE_PPI = 6;        // 1인치 당 기본 픽셀 (zoom=1 기준)
+const SNAP_THRESHOLD = 8;  // 스냅/가이드 임계값 (px)
+
+let monitors = [];
+let zoom = 1;
+let uid = 0;
+
+const stage = document.getElementById("stage");
+const cardsEl = document.getElementById("cards");
+
+/* ============ 기하 계산 ============ */
+// 대각선(인치)과 종횡비로 실제 가로/세로(인치) 계산
+function physicalSize(m) {
+  const diag = Math.hypot(m.arW, m.arH);
+  let w = m.inch * m.arW / diag;
+  let h = m.inch * m.arH / diag;
+  if (m.pivot) [w, h] = [h, w];
+  return { w, h };
+}
+function ppi() { return BASE_PPI * zoom; }
+function pxSize(m) {
+  const p = physicalSize(m);
+  return { w: p.w * ppi(), h: p.h * ppi() };
+}
+
+/* ============ 렌더링 ============ */
+function render() {
+  renderStage();
+  renderCards();
+  updateToolbar();
+}
+
+function renderStage() {
+  stage.innerHTML = "";
+  monitors.forEach((m, i) => {
+    const s = pxSize(m);
+    const phys = physicalSize(m);
+    const el = document.createElement("div");
+    el.className = "monitor";
+    el.dataset.id = m.id;
+    el.style.left = m.x + "px";
+    el.style.top = m.y + "px";
+    el.style.width = s.w + "px";
+    el.style.height = s.h + "px";
+    el.style.background = hexToRgba(m.color, 0.28);
+    el.style.borderColor = m.color;
+    el.style.zIndex = 10 + i;
+
+    const cm = (v) => (v * 2.54).toFixed(1);
+    el.innerHTML =
+      `<div class="label">
+        <div class="lbl-name">${escapeHtml(m.name)}</div>
+        <div class="lbl-sub">${m.inch}″ · ${phys.w.toFixed(1)}×${phys.h.toFixed(1)}″</div>
+        <div class="lbl-sub">${cm(phys.w)}×${cm(phys.h)} cm</div>
+      </div>`;
+    stage.appendChild(el);
+  });
+}
+
+function renderCards() {
+  cardsEl.innerHTML = "";
+  monitors.forEach((m) => {
+    const phys = physicalSize(m);
+    const card = document.createElement("div");
+    card.className = "monitor-card";
+
+    const presetIdx = PRESETS.findIndex(p => p.w === m.arW && p.h === m.arH);
+    const isCustom = presetIdx === -1;
+
+    card.innerHTML = `
+      <div class="mc-top">
+        <div class="swatch" style="background:${m.color}"></div>
+        <div class="mc-title">${escapeHtml(m.name)}</div>
+        <div class="mc-dims">${phys.w.toFixed(1)}×${phys.h.toFixed(1)}″</div>
+        <button class="btn-remove" title="삭제" data-act="remove">×</button>
+      </div>
+      <div class="field">
+        <label>화면 크기 (대각선 인치)</label>
+        <input type="number" data-act="inch" value="${m.inch}" min="1" max="200" step="1">
+      </div>
+      <div class="field">
+        <label>종횡비</label>
+        <select data-act="preset">
+          ${PRESETS.map((p, idx) => {
+            const val = p.w === 0 ? "custom" : `${p.w}:${p.h}`;
+            const sel = (idx === presetIdx || (isCustom && p.w === 0)) ? "selected" : "";
+            return `<option value="${val}" ${sel}>${p.label}</option>`;
+          }).join("")}
+        </select>
+      </div>
+      <div class="field" data-role="customAR" style="${isCustom ? "" : "display:none"}">
+        <label>비율 직접 입력 (가로 : 세로)</label>
+        <div class="ar-inputs">
+          <input type="number" data-act="arW" value="${m.arW}" min="1" step="1">
+          <span>:</span>
+          <input type="number" data-act="arH" value="${m.arH}" min="1" step="1">
+        </div>
+      </div>
+      <div class="field">
+        <label>피벗 (세로 회전)</label>
+        <div class="pivot-toggle ${m.pivot ? "on" : ""}" data-act="pivot">
+          <span>${m.pivot ? "세로 모드" : "가로 모드"}</span>
+          <div class="switch"></div>
+        </div>
+      </div>
+    `;
+    cardsEl.appendChild(card);
+    bindCard(card, m);
+  });
+}
+
+function bindCard(card, m) {
+  card.querySelector('[data-act="remove"]').onclick = () => removeMonitor(m.id);
+
+  card.querySelector('[data-act="inch"]').onchange = (e) => {
+    const v = parseFloat(e.target.value);
+    if (v > 0) { m.inch = v; render(); }
+  };
+
+  const presetSel = card.querySelector('[data-act="preset"]');
+  const customAR = card.querySelector('[data-role="customAR"]');
+  presetSel.onchange = (e) => {
+    if (e.target.value === "custom") {
+      customAR.style.display = "";
+    } else {
+      const [w, h] = e.target.value.split(":").map(Number);
+      m.arW = w; m.arH = h;
+      customAR.style.display = "none";
+      render();
+    }
+  };
+
+  const arW = card.querySelector('[data-act="arW"]');
+  const arH = card.querySelector('[data-act="arH"]');
+  const applyAR = () => {
+    const w = parseFloat(arW.value), h = parseFloat(arH.value);
+    if (w > 0 && h > 0) { m.arW = w; m.arH = h; render(); }
+  };
+  if (arW) arW.onchange = applyAR;
+  if (arH) arH.onchange = applyAR;
+
+  card.querySelector('[data-act="pivot"]').onclick = () => {
+    m.pivot = !m.pivot; render();
+  };
+}
+
+/* ============ 모니터 추가/삭제 ============ */
+function addMonitor(opts = {}) {
+  if (monitors.length >= MAX_MONITORS) return;
+  const id = ++uid;
+  const idx = monitors.length;
+  const m = {
+    id,
+    name: opts.name || `모니터 ${idx + 1}`,
+    inch: opts.inch ?? 27,
+    arW: opts.arW ?? 16,
+    arH: opts.arH ?? 9,
+    pivot: opts.pivot ?? false,
+    color: PALETTE[idx % PALETTE.length],
+    x: 0, y: 0,
+  };
+  monitors.push(m);
+  // 초기 배치: 겹치지 않게 가로로 나열
+  layoutInitial(m, idx);
+  render();
+}
+
+function layoutInitial(m, idx) {
+  const s = pxSize(m);
+  const rect = stage.getBoundingClientRect();
+  let x = 60;
+  for (let i = 0; i < idx; i++) {
+    x += pxSize(monitors[i]).w + 30;
+  }
+  m.x = x;
+  m.y = Math.max(90, (rect.height - s.h) / 2);
+}
+
+function removeMonitor(id) {
+  if (monitors.length <= MIN_MONITORS) return;
+  monitors = monitors.filter(m => m.id !== id);
+  monitors.forEach((m, i) => {
+    if (/^모니터 \d+$/.test(m.name)) m.name = `모니터 ${i + 1}`;
+    m.color = PALETTE[i % PALETTE.length];
+  });
+  render();
+}
+
+/* ============ 포인터 입력 (마우스·터치 통합): 드래그 / 패닝 / 핀치 줌 ============ */
+const stageWrap = document.getElementById("stage-wrap");
+let gridOffX = 0, gridOffY = 0;         // 그리드 배경 오프셋 (패닝 시각 효과)
+const pointers = new Map();             // pointerId -> {x, y} (stage 로컬 좌표)
+let gesture = null;                     // 현재 제스처 상태
+
+function localPoint(e) {
+  const r = stage.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+function pointerArray() { return [...pointers.values()]; }
+function pinchInfo() {
+  const p = pointerArray();
+  return {
+    dist: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y),
+    mid: { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 },
+  };
+}
+
+function beginPan(start) {
+  gesture = {
+    type: "pan",
+    origins: monitors.map(m => ({ m, x: m.x, y: m.y })),
+    gx: gridOffX, gy: gridOffY,
+    start,
+  };
+  stageWrap.classList.add("panning");
+}
+function beginPinch() {
+  clearGuides();
+  const info = pinchInfo();
+  gesture = { type: "pinch", startDist: info.dist || 1, startZoom: zoom, lastMid: info.mid };
+  stageWrap.classList.add("panning");
+}
+
+stageWrap.addEventListener("pointerdown", (e) => {
+  if (e.pointerType === "mouse" && e.button !== 0) return;   // 마우스는 좌클릭만
+  if (e.target.closest("#toolbar") || e.target.closest(".scale-note")) return;
+  e.preventDefault();
+
+  const p = localPoint(e);
+  pointers.set(e.pointerId, p);
+
+  if (pointers.size === 1) {
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", onPointerUp);
+    document.addEventListener("pointercancel", onPointerUp);
+
+    const monEl = e.target.closest(".monitor");
+    if (monEl) {
+      const m = monitors.find(x => x.id === +monEl.dataset.id);
+      gesture = { type: "drag", m, el: monEl, start: p, origX: m.x, origY: m.y };
+      monEl.classList.add("dragging");
+    } else {
+      beginPan(p);
+    }
+  } else if (pointers.size === 2) {
+    if (gesture && gesture.type === "drag") gesture.el.classList.remove("dragging");
+    beginPinch();                                            // 두 손가락 → 핀치 줌
+  }
+});
+
+function onPointerMove(e) {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, localPoint(e));
+  if (!gesture) return;
+
+  if (gesture.type === "drag") {
+    const p = pointers.get(e.pointerId);
+    const nx = gesture.origX + (p.x - gesture.start.x);
+    const ny = gesture.origY + (p.y - gesture.start.y);
+    const snapped = applySnap(gesture.m, nx, ny);
+    gesture.m.x = snapped.x; gesture.m.y = snapped.y;
+    gesture.el.style.left = snapped.x + "px";
+    gesture.el.style.top = snapped.y + "px";
+    drawGuides(snapped.guides);
+
+  } else if (gesture.type === "pan") {
+    const p = pointers.get(e.pointerId);
+    const dx = p.x - gesture.start.x, dy = p.y - gesture.start.y;
+    gesture.origins.forEach(o => { o.m.x = o.x + dx; o.m.y = o.y + dy; });
+    gridOffX = gesture.gx + dx; gridOffY = gesture.gy + dy;
+    stageWrap.style.backgroundPosition = `${gridOffX}px ${gridOffY}px`;
+    renderStage();
+
+  } else if (gesture.type === "pinch") {
+    if (pointers.size < 2) return;
+    const info = pinchInfo();
+    // 두 손가락 중심 이동 = 패닝
+    const dmx = info.mid.x - gesture.lastMid.x, dmy = info.mid.y - gesture.lastMid.y;
+    monitors.forEach(m => { m.x += dmx; m.y += dmy; });
+    gridOffX += dmx; gridOffY += dmy;
+    stageWrap.style.backgroundPosition = `${gridOffX}px ${gridOffY}px`;
+    gesture.lastMid = info.mid;
+    // 손가락 간격 변화 = 줌 (중심점 고정)
+    const target = Math.min(6, Math.max(0.2, gesture.startZoom * (info.dist / gesture.startDist)));
+    applyZoom(target, info.mid);
+    renderStage();
+    updateToolbar();
+  }
+}
+
+function onPointerUp(e) {
+  pointers.delete(e.pointerId);
+
+  if (gesture && gesture.type === "drag" && gesture.el) {
+    gesture.el.classList.remove("dragging");
+    clearGuides();
+  }
+
+  // 핀치 중 한 손가락만 떼면 남은 손가락으로 패닝 전환
+  if (gesture && gesture.type === "pinch" && pointers.size === 1) {
+    const id = [...pointers.keys()][0];
+    beginPan(pointers.get(id));
+    return;
+  }
+
+  if (pointers.size === 0) {
+    stageWrap.classList.remove("panning");
+    clearGuides();
+    gesture = null;
+    document.removeEventListener("pointermove", onPointerMove);
+    document.removeEventListener("pointerup", onPointerUp);
+    document.removeEventListener("pointercancel", onPointerUp);
+  }
+}
+
+// 다른 모니터의 엣지/중심선에 스냅하고, 정렬된 축의 가이드 반환
+function applySnap(m, nx, ny) {
+  const s = pxSize(m);
+  const guides = [];
+
+  // 이 모니터의 후보 X 지점: 좌, 중앙, 우 (오프셋)
+  const xCands = [
+    { off: 0,      val: nx },
+    { off: s.w / 2, val: nx + s.w / 2 },
+    { off: s.w,    val: nx + s.w },
+  ];
+  const yCands = [
+    { off: 0,      val: ny },
+    { off: s.h / 2, val: ny + s.h / 2 },
+    { off: s.h,    val: ny + s.h },
+  ];
+
+  // 타 모니터들의 정렬 기준선
+  const xLines = [], yLines = [];
+  monitors.forEach(o => {
+    if (o.id === m.id) return;
+    const os = pxSize(o);
+    xLines.push(o.x, o.x + os.w / 2, o.x + os.w);
+    yLines.push(o.y, o.y + os.h / 2, o.y + os.h);
+  });
+
+  let bestX = null;
+  for (const c of xCands) {
+    for (const line of xLines) {
+      const d = Math.abs(c.val - line);
+      if (d <= SNAP_THRESHOLD && (bestX === null || d < bestX.d)) {
+        bestX = { d, newX: line - c.off, line };
+      }
+    }
+  }
+  let bestY = null;
+  for (const c of yCands) {
+    for (const line of yLines) {
+      const d = Math.abs(c.val - line);
+      if (d <= SNAP_THRESHOLD && (bestY === null || d < bestY.d)) {
+        bestY = { d, newY: line - c.off, line };
+      }
+    }
+  }
+
+  if (bestX) { nx = bestX.newX; guides.push({ type: "v", pos: bestX.line }); }
+  if (bestY) { ny = bestY.newY; guides.push({ type: "h", pos: bestY.line }); }
+
+  return { x: nx, y: ny, guides };
+}
+
+let guideEls = [];
+function drawGuides(guides) {
+  clearGuides();
+  guides.forEach(g => {
+    const d = document.createElement("div");
+    d.className = "guide " + g.type;
+    if (g.type === "v") d.style.left = g.pos + "px";
+    else d.style.top = g.pos + "px";
+    stage.appendChild(d);
+    guideEls.push(d);
+  });
+}
+function clearGuides() {
+  guideEls.forEach(d => d.remove());
+  guideEls = [];
+}
+
+/* ============ 높이 정렬 ============ */
+// 모든 모니터의 바닥(하단 엣지)을 동일한 기준선으로 맞춤
+function alignHeights() {
+  if (monitors.length === 0) return;
+  // 현재 바닥 위치들의 평균을 기준선으로
+  const bottoms = monitors.map(m => m.y + pxSize(m).h);
+  const baseline = bottoms.reduce((a, b) => a + b, 0) / bottoms.length;
+  monitors.forEach(m => {
+    m.y = baseline - pxSize(m).h;
+  });
+  render();
+}
+
+/* ============ 줌 ============ */
+function applyZoom(z, pivot) {         // 위치만 스케일 (렌더 없음 — 핀치에서 사용)
+  const rect = stage.getBoundingClientRect();
+  const cx = pivot ? pivot.x : rect.width / 2;
+  const cy = pivot ? pivot.y : rect.height / 2;
+  const factor = z / zoom;
+  monitors.forEach(m => {
+    m.x = cx + (m.x - cx) * factor;
+    m.y = cy + (m.y - cy) * factor;
+  });
+  zoom = z;
+}
+function setZoom(z, pivot) { applyZoom(z, pivot); render(); }
+function zoomBy(mult, pivot) {
+  setZoom(Math.min(6, Math.max(0.2, zoom * mult)), pivot);
+}
+function updateToolbar() {
+  document.getElementById("zoom-level").textContent = Math.round(zoom * 100) + "%";
+  const scale = document.getElementById("scaleNote");
+  // 화면상 1인치가 몇 px인지
+  scale.textContent = `축척: 1인치 ≈ ${ppi().toFixed(1)}px  ·  모니터 드래그로 이동, 빈 곳 드래그로 화면 이동`;
+  const btnAdd = document.getElementById("btnAdd");
+  btnAdd.disabled = monitors.length >= MAX_MONITORS;
+  document.getElementById("addHint").textContent =
+    `${monitors.length} / ${MAX_MONITORS}개 · 최대 4개까지 비교할 수 있습니다`;
+}
+
+// 모든 모니터가 화면에 들어오도록 줌/위치 조정
+function fitToScreen() {
+  if (monitors.length === 0) return;
+  // 물리 크기 기준 바운딩 계산 (현 위치 무시하고 재배치)
+  const rect = stage.getBoundingClientRect();
+  const pad = 80;
+  // 임시로 zoom=1에서 가로 나열했을 때 총 폭 계산
+  const gap = 30;
+  let totalW = 0, maxH = 0;
+  const sizes = monitors.map(m => {
+    const p = physicalSize(m);
+    return { w: p.w * BASE_PPI, h: p.h * BASE_PPI };
+  });
+  sizes.forEach((s, i) => { totalW += s.w + (i > 0 ? gap : 0); maxH = Math.max(maxH, s.h); });
+  const zx = (rect.width - pad * 2) / totalW;
+  const zy = (rect.height - pad * 2) / maxH;
+  zoom = Math.min(6, Math.max(0.2, Math.min(zx, zy)));
+
+  // 재배치
+  let x = (rect.width - totalW * zoom) / 2;
+  const cy = rect.height / 2;
+  monitors.forEach((m, i) => {
+    const s = pxSize(m);
+    m.x = x;
+    m.y = cy - s.h / 2;
+    x += s.w + gap * zoom;
+  });
+  render();
+}
+
+/* ============ 초기 위치로 이동 ============ */
+// 확대율과 위치를 처음 상태(가로 나열, 100%)로 되돌림
+function resetView() {
+  zoom = 1;
+  gridOffX = 0; gridOffY = 0;
+  stageWrap.style.backgroundPosition = "0px 0px";
+  monitors.forEach((m, i) => layoutInitial(m, i));
+  render();
+}
+
+/* ============ 유틸 ============ */
+function hexToRgba(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* ============ 이벤트 바인딩 ============ */
+document.getElementById("btnAdd").onclick = () => addMonitor();
+document.getElementById("btnAlign").onclick = alignHeights;
+document.getElementById("btnZoomIn").onclick = () => zoomBy(1.2);
+document.getElementById("btnZoomOut").onclick = () => zoomBy(1 / 1.2);
+document.getElementById("btnFit").onclick = fitToScreen;
+document.getElementById("btnReset").onclick = resetView;
+document.getElementById("zoom-level").onclick = () => setZoom(1);
+
+/* 모바일 설정 시트 (drawer) */
+const sidebar = document.getElementById("sidebar");
+const backdrop = document.getElementById("backdrop");
+function openSettings() { sidebar.classList.add("open"); backdrop.classList.add("show"); }
+function closeSettings() { sidebar.classList.remove("open"); backdrop.classList.remove("show"); }
+document.getElementById("btnSettings").onclick = openSettings;
+document.getElementById("btnCloseSettings").onclick = closeSettings;
+backdrop.onclick = closeSettings;
+
+// 마우스 휠 줌 (Ctrl 또는 그냥 휠)
+document.getElementById("stage-wrap").addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const rect = stage.getBoundingClientRect();
+  const pivot = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  zoomBy(e.deltaY < 0 ? 1.1 : 1 / 1.1, pivot);
+}, { passive: false });
+
+/* ============ 서비스 워커 등록 (PWA 오프라인) ============ */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => { /* 오프라인 미지원 환경 무시 */ });
+  });
+}
+
+/* ============ 초기화 ============ */
+window.addEventListener("resize", () => { /* 위치 유지 */ });
+
+// 기본 2개 세팅
+addMonitor({ name: "모니터 1", inch: 27, arW: 16, arH: 9 });
+addMonitor({ name: "모니터 2", inch: 32, arW: 16, arH: 9 });
+</script>
+</body>
+</html>
