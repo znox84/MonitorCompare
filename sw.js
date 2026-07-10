@@ -1,5 +1,5 @@
 // MonitorCompare 서비스 워커 — 오프라인 지원 (cache-first)
-const CACHE = "monitorcompare-v3";
+const CACHE = "monitorcompare-v5";
 const ASSETS = [
   "./",
   "./index.html",
